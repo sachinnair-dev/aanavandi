@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ആനവണ്ടി — aanavandi</title>
+<meta name="description" content="aanavandi — a moody, cinematic KSRTC bus themed radio.">
+
+<!--
+  ============================================================
+  SWAPPING THE MUSIC SOURCE
+  ============================================================
+  1) Replace DEFAULT_SPOTIFY_URI near the top of the <script>
+     block with your own playlist id (from a link like
+     https://open.spotify.com/playlist/XXXXXXXXXXXXXXXXXXXX ).
+  2) OR open the page with ?playlist=XXXXXXXXXXXXXXXXXXXX
+     appended to the URL — no editing required.
+  Currently wired to Spotify's own public editorial playlist
+  "90s Love Malayalam" (id 37i9dQZF1DXc7ZYlHsGPhK) as a working
+  placeholder.
+
+  NOTE on "no playlist name / just play songs": the Spotify
+  player is intentionally rendered off-screen (1x1px, silent to
+  the eye, not to the ear) and driven entirely through Spotify's
+  official iFrame Playback API. Every visible control here is
+  custom. This keeps things simple and needs no developer app —
+  the tradeoff is that it is still, technically, Spotify's
+  embedded player running invisibly, so it inherits whatever
+  ads/preview limits apply to a signed-out or free listener in
+  that browser. A fully brandless player using Spotify's Web
+  Playback SDK (which needs Premium + your own free Spotify
+  Developer app/Client ID) is a further step up from this if you
+  want it later.
+  ============================================================
+-->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Malayalam:wght@400;600;700&family=Cormorant+Garamond:wght@500;600&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --oxblood:#5a1a26;
+    --oxblood-deep:#2a0c13;
+    --brass:#caa056;
+    --brass-dim:#7a5f2c;
+    --brass-glow: rgba(202,160,86,0.55);
+    --cream:#ecdfc4;
+    --ink:#07070a;
+    --teal-deep:#0a1a20;
+    --teal:#12303a;
+    --dusk-1:#3a1420;
+    --dusk-2:#7a3420;
+    --dusk-3:#c9762f;
+    --dusk-4:#2a2410;
+    --glass-panel: rgba(10,7,8,0.55);
+  }
+
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; width:100%; height:100%; overflow:hidden; background:#000; }
+  body{
+    position:relative; height:100vh; width:100vw;
+    font-family:'Cormorant Garamond', serif;
+    color:var(--cream);
+  }
+
+  /* ---------- STAGE ---------- */
+  #stage{ position:absolute; inset:0; overflow:hidden; }
+  .scene-layer{
+    position:absolute; inset:0; opacity:0; transition:opacity 1.1s ease;
+    pointer-events:none;
+  }
+  .scene-layer.active{ opacity:1; pointer-events:auto; }
+  .scene-bg{
+    position:absolute; inset:-4%; /* overscan for the ken-burns zoom */
+    animation: kenburns 34s ease-in-out infinite alternate;
+    will-change: transform;
+  }
+  @keyframes kenburns{ from{ transform:scale(1) translate(0,0);} to{ transform:scale(1.07) translate(-1%,-1%);} }
+
+  /* ---------- SCENE 1 : GOLDEN HOUR HIGHWAY ---------- */
+  .scene-layer.scene-window .scene-bg{
+    background:
+      radial-gradient(ellipse 60% 40% at 18% 62%, rgba(255,214,140,0.55), transparent 60%),
+      linear-gradient(to bottom, var(--dusk-1) 0%, var(--dusk-2) 42%, var(--dusk-3) 58%, var(--dusk-4) 78%, #17140a 100%);
+  }
+  .sun-flare{
+    position:absolute; left:14%; top:56%; width:150px; height:150px; border-radius:50%;
+    background: radial-gradient(circle, #ffe9b8 0%, rgba(255,214,120,.5) 35%, transparent 70%);
+    filter: blur(1px);
+  }
+  .sun-flare::before, .sun-flare::after{
+    content:''; position:absolute; border-radius:50%; border:1px solid rgba(255,220,150,.25);
+  }
+  .sun-flare::before{ inset:-40px; }
+  .sun-flare::after{ inset:-85px; border-color: rgba(255,220,150,.12); }
+  .ridge{
+    position:absolute; left:0; right:0; bottom:26%; height:20%;
+    background: var(--oxblood-deep);
+    clip-path: polygon(0% 100%,0% 55%,10% 30%,22% 60%,34% 15%,48% 50%,60% 25%,74% 58%,88% 20%,100% 45%,100% 100%);
+    opacity:.9;
+  }
+  .palm-row{
+    position:absolute; left:0; bottom:24%; width:240%; height:22%;
+    display:flex; align-items:flex-end; gap:46px;
+    animation: driftPast 22s linear infinite;
+  }
+  body.playing .palm-row{ animation-play-state:running; } body:not(.playing) .palm-row{ animation-play-state:paused; }
+  @keyframes driftPast{ from{ transform:translateX(0);} to{ transform:translateX(-50%);} }
+  .palm{ position:relative; width:5px; height:64px; background:var(--oxblood-deep); flex:none; }
+  .palm i{ position:absolute; top:-4px; left:-1px; width:30px; height:8px; background:var(--oxblood-deep); border-radius:50% 50% 50% 0; }
+  .palm i:nth-child(1){ transform: rotate(-40deg) translateX(-12px); }
+  .palm i:nth-child(2){ transform: rotate(-5deg) translateX(4px); }
+  .palm i:nth-child(3){ transform: rotate(28deg) translateX(10px); }
+
+  .glass-frame{
+    position:absolute; inset:0;
+    background:
+      linear-gradient(var(--ink) 0 0) top / 100% 8% no-repeat,
+      linear-gradient(var(--ink) 0 0) bottom / 100% 30% no-repeat;
+  }
+  .glass-mullion{ position:absolute; top:8%; bottom:30%; left:50%; width:10px; margin-left:-5px; background:var(--ink); }
+  .glass-streak{
+    position:absolute; top:8%; bottom:30%; left:0; right:0; overflow:hidden; opacity:.35; mix-blend-mode:screen;
+  }
+  .glass-streak::before{
+    content:''; position:absolute; top:-20%; left:-30%; width:40%; height:160%;
+    background:linear-gradient(100deg, transparent, rgba(255,255,255,.5), transparent);
+    animation: glassPan 9s ease-in-out infinite;
+  }
+  @keyframes glassPan{ 0%{ left:-40%;} 100%{ left:120%; } }
+  .seat-sil{
+    position:absolute; left:0; right:0; bottom:0; height:24%;
+    background: linear-gradient(180deg, var(--oxblood) 0%, var(--oxblood-deep) 100%);
+    border-top: 4px solid var(--brass-dim);
+    clip-path: polygon(0 26%, 14% 26%, 18% 0%, 40% 0%, 44% 26%, 100% 26%, 100% 100%, 0 100%);
+  }
+
+  /* ---------- SCENE 2 : NIGHT JUNCTION ---------- */
+  .scene-layer.scene-stand .scene-bg{
+    background: linear-gradient(to bottom, var(--teal-deep) 0%, var(--teal) 46%, #241708 78%, #150e05 100%);
+  }
+  .skyline{ position:absolute; left:0; right:0; bottom:38%; height:20%; display:flex; align-items:flex-end; opacity:.55; }
+  .skyline i{ flex:none; background:#081014; margin-right:4px; }
+  .fog-band{
+    position:absolute; left:-10%; right:-10%; bottom:20%; height:14%;
+    background: linear-gradient(to top, rgba(230,190,130,.18), transparent);
+    filter: blur(6px);
+  }
+  .lamp{ position:absolute; top:6%; width:2px; height:34%; background:linear-gradient(to bottom, rgba(255,210,130,0), #4a3210); }
+  .lamp .glow{
+    position:absolute; bottom:-40px; left:50%; width:220px; height:220px; margin-left:-110px; border-radius:50%;
+    background: radial-gradient(circle, rgba(255,205,120,.5), transparent 65%);
+    animation: flicker 5s ease-in-out infinite;
+  }
+  .lamp.l1{ left:16%; } .lamp.l2{ left:66%; top:2%; }
+  @keyframes flicker{ 0%,100%{opacity:1;} 46%{opacity:1;} 48%{opacity:.6;} 51%{opacity:1;} 83%{opacity:.82;} }
+
+  .bus-art{ position:absolute; left:6%; bottom:20%; width:58%; filter: drop-shadow(0 14px 18px rgba(0,0,0,.6)); }
+  .ground-reflect{
+    position:absolute; left:6%; bottom:12%; width:58%; height:9%;
+    background: linear-gradient(to bottom, rgba(90,26,38,.25), transparent);
+    filter: blur(3px); transform: scaleY(-1);
+  }
+  .crowd{ position:absolute; left:2%; bottom:19%; display:flex; align-items:flex-end; gap:14px; }
+  .crowd i{ flex:none; width:9px; height:26px; border-radius:5px 5px 0 0; background:#060a0d; opacity:.8; box-shadow:0 4px 6px rgba(0,0,0,.4); }
+
+  /* ---------- SCENE 3 : LAMP-LIT COUNTER ---------- */
+  .scene-layer.scene-conductor .scene-bg{
+    background: radial-gradient(ellipse 70% 60% at 24% 18%, rgba(255,196,120,.35), transparent 55%),
+                linear-gradient(150deg, #2a1808 0%, #4a2c10 48%, #241203 100%);
+  }
+  .bokeh{ position:absolute; border-radius:50%; filter: blur(10px); opacity:.5; }
+  .bokeh.b1{ width:140px; height:140px; left:70%; top:12%; background:radial-gradient(circle, rgba(202,160,86,.6), transparent 70%); }
+  .bokeh.b2{ width:90px; height:90px; left:82%; top:44%; background:radial-gradient(circle, rgba(90,26,38,.7), transparent 70%); }
+  .bokeh.b3{ width:60px; height:60px; left:60%; top:60%; background:radial-gradient(circle, rgba(255,220,150,.5), transparent 70%); }
+
+  .ticket-roll{
+    position:absolute; left:8%; top:30%; width:26%; height:12%;
+    background: repeating-linear-gradient(0deg, var(--cream) 0 3px, #d8c793 3px 6px);
+    border-radius:2px; transform: rotate(-9deg);
+    box-shadow: 0 10px 20px rgba(0,0,0,.5);
+  }
+  .ticket-roll::after{
+    content:''; position:absolute; left:0; right:0; bottom:-6px; height:6px;
+    background: radial-gradient(circle, var(--cream) 40%, transparent 41%) 0 0/10px 10px repeat-x;
+    opacity:.8;
+  }
+  .punch{
+    position:absolute; left:40%; top:40%; width:15%; height:22%;
+    background: linear-gradient(160deg, #4a4a4a 0%, #101010 100%);
+    border-radius: 6px 6px 12px 12px; box-shadow: 0 12px 22px rgba(0,0,0,.55);
+  }
+  .punch .lever{
+    position:absolute; top:-16%; left:32%; width:36%; height:22%;
+    background: linear-gradient(160deg,#c0392b,#7a1f16); border-radius:3px;
+    transform-origin: bottom center;
+  }
+  body.punching .punch .lever{ animation: punchDown .22s ease-in-out 2; }
+  @keyframes punchDown{ 0%{ transform: rotate(0deg);} 50%{ transform: rotate(-58deg);} 100%{ transform: rotate(0deg);} }
+  .punch .dial{ position:absolute; bottom:16%; left:50%; width:44%; height:20%; margin-left:-22%; border-radius:50%; background:#efe3c0; box-shadow: inset 0 2px 4px rgba(0,0,0,.4); }
+
+  .sleeve{
+    position:absolute; right:-10%; bottom:-16%; width:40%; height:52%;
+    background: linear-gradient(120deg, #5c4a26 0%, #2e2410 100%);
+    border-radius: 60% 30% 45% 45%; opacity:.45; filter: blur(3px);
+    box-shadow: -14px 0 34px rgba(0,0,0,.4) inset;
+  }
+  .coins{ position:absolute; left:12%; bottom:12%; }
+  .coins i{
+    position:absolute; width:20px; height:20px; border-radius:50%;
+    background: radial-gradient(circle at 35% 35%, #f3d98a, #8a6510);
+    box-shadow:0 3px 5px rgba(0,0,0,.5);
+  }
+  .coins i:nth-child(1){ left:0; top:0; transform:rotate(-8deg); }
+  .coins i:nth-child(2){ left:14px; top:4px; transform:rotate(12deg); }
+  .coins i:nth-child(3){ left:26px; top:-3px; transform:rotate(4deg); }
+
+  /* ---------- SCENE 4 : SUPER FAST HIGHWAY ---------- */
+  .scene-layer.scene-night .scene-bg{
+    background: linear-gradient(to bottom, #060d13 0%, var(--teal-deep) 55%, #0c1a12 100%);
+  }
+  .stars{ position:absolute; inset:0 0 30% 0; }
+  .stars i{ position:absolute; width:2px; height:2px; background:#fff; border-radius:50%; opacity:.6; animation: twinkle 3.4s ease-in-out infinite; }
+  @keyframes twinkle{ 0%,100%{opacity:.15;} 50%{opacity:.85;} }
+  .streak{
+    position:absolute; height:2px; left:-40%; width:38%;
+    background: linear-gradient(90deg, transparent, rgba(230,230,255,.85), transparent);
+    opacity:0; filter: blur(.3px);
+  }
+  body.playing .streak{ opacity:1; animation: streak linear infinite; }
+  @keyframes streak{ from{ left:-40%;} to{ left:110%; } }
+  .dash-glow{
+    position:absolute; left:0; right:0; bottom:0; height:22%;
+    background: radial-gradient(ellipse at 50% 120%, rgba(90,230,180,.14), transparent 60%);
+  }
+  .far-hills{
+    position:absolute; left:0; right:0; bottom:20%; height:12%; background:#08130f;
+    clip-path: polygon(0 100%,0 40%,20% 70%,40% 20%,60% 60%,82% 15%,100% 55%,100% 100%);
+  }
+
+  /* ---------- SHARED ATMOSPHERE OVERLAYS ---------- */
+  #vignette{ position:absolute; inset:0; pointer-events:none; z-index:5;
+    background: radial-gradient(ellipse 80% 75% at 50% 48%, transparent 40%, rgba(0,0,0,.62) 100%); }
+  #grain{ position:absolute; inset:0; pointer-events:none; z-index:6; opacity:.16; mix-blend-mode:overlay; background-repeat:repeat; }
+  .letterbox{ position:absolute; left:0; right:0; height:16px; background:#000; z-index:8; pointer-events:none; }
+  .letterbox.top{ top:0; } .letterbox.bottom{ bottom:0; }
+  .particles{ position:absolute; inset:0; overflow:hidden; z-index:4; pointer-events:none; }
+  .particles span{
+    position:absolute; bottom:-6%; width:3px; height:3px; border-radius:50%;
+    background: rgba(255,220,160,.55); opacity:0;
+    animation: floatUp linear infinite;
+  }
+  @keyframes floatUp{ 0%{ opacity:0; transform:translateY(0) translateX(0); } 10%{opacity:.7;} 90%{opacity:.5;} 100%{ opacity:0; transform:translateY(-120vh) translateX(20px); } }
+
+  /* ---------- NAV ---------- */
+  #scene-nav{
+    position:absolute; top:24px; left:50%; transform:translateX(-50%);
+    display:flex; gap:6px; z-index:20; background:var(--glass-panel);
+    padding:6px; border-radius:16px; backdrop-filter: blur(8px);
+    border:1px solid rgba(202,160,86,.18);
+  }
+  #scene-nav button{
+    font-family:'Cormorant Garamond', serif; font-weight:600; font-size:.86rem; letter-spacing:.4px;
+    background:transparent; border:1px solid transparent; color:var(--cream); opacity:.72;
+    padding:8px 14px; border-radius:11px; cursor:pointer; transition:.25s;
+    display:flex; align-items:center; gap:7px;
+  }
+  #scene-nav button:hover{ opacity:1; background:rgba(255,255,255,.06); }
+  #scene-nav button.active{ opacity:1; background:rgba(202,160,86,.16); border-color:rgba(202,160,86,.5); color:var(--brass); }
+
+  /* ---------- TITLE ---------- */
+  #title-block{ position:absolute; top:82px; left:50%; transform:translateX(-50%); text-align:center; z-index:15; pointer-events:none; }
+  #title-ml{
+    font-family:'Noto Sans Malayalam', sans-serif; font-weight:700; font-size:2.5rem; margin:0;
+    color:var(--brass); text-shadow: 0 0 22px var(--brass-glow), 0 2px 0 rgba(0,0,0,.5);
+    letter-spacing:1px;
+  }
+  #title-en{ font-family:'Share Tech Mono', monospace; font-size:.68rem; letter-spacing:5px; opacity:.55; margin-top:4px; }
+
+  /* ---------- AMBIENCE ---------- */
+  #ambience-btn{
+    position:absolute; top:24px; right:24px; z-index:20;
+    background:var(--glass-panel); border:1px solid rgba(202,160,86,.18); color:var(--cream);
+    padding:10px 14px; border-radius:12px; font-family:'Cormorant Garamond'; font-weight:600; font-size:.8rem;
+    cursor:pointer; backdrop-filter: blur(8px); letter-spacing:.4px;
+  }
+  #ambience-btn.on{ color:var(--brass); border-color:rgba(202,160,86,.5); background:rgba(202,160,86,.14); }
+
+  /* ---------- PLAYER (no Spotify chrome anywhere — fully custom) ---------- */
+  #spotify-embed{ position:absolute; width:1px; height:1px; opacity:0; overflow:hidden; pointer-events:none; border:0; }
+
+  #dashboard{
+    position:absolute; bottom:30px; left:50%; transform:translateX(-50%);
+    z-index:30; display:flex; align-items:center; gap:22px;
+    background: linear-gradient(180deg, rgba(20,10,10,.72) 0%, rgba(8,4,4,.82) 100%);
+    border:1px solid rgba(202,160,86,.22); border-radius:40px;
+    padding:12px 22px; backdrop-filter: blur(10px);
+    box-shadow: 0 16px 40px rgba(0,0,0,.55);
+  }
+  .ctrl-btn{
+    background: radial-gradient(circle at 35% 30%, #2a2320, #0e0b0a);
+    border:1px solid rgba(202,160,86,.3); color:var(--cream); cursor:pointer;
+    border-radius:50%; display:flex; align-items:center; justify-content:center;
+    transition: transform .15s ease, box-shadow .2s;
+    box-shadow: 0 3px 0 rgba(0,0,0,.5), inset 0 1px 1px rgba(255,255,255,.06);
+  }
+  .ctrl-btn:hover{ box-shadow: 0 3px 0 rgba(0,0,0,.5), 0 0 14px var(--brass-glow); }
+  .ctrl-btn:active{ transform: translateY(2px); }
+  #prev-btn, #next-btn{ width:40px; height:40px; font-size:1rem; }
+  #play-btn{ width:56px; height:56px; font-size:1.25rem;
+    background: radial-gradient(circle at 35% 30%, var(--brass), var(--brass-dim)); color:#20140a; border:none; }
+
+  #eq{ display:flex; align-items:flex-end; gap:3px; height:18px; }
+  #eq span{ width:3px; background:var(--brass); border-radius:2px; height:3px; opacity:.6; }
+  body.playing #eq span:nth-child(1){ animation: eqbar .9s ease-in-out infinite; }
+  body.playing #eq span:nth-child(2){ animation: eqbar .7s ease-in-out infinite .15s; }
+  body.playing #eq span:nth-child(3){ animation: eqbar 1.1s ease-in-out infinite .3s; }
+  body.playing #eq span:nth-child(4){ animation: eqbar .8s ease-in-out infinite .1s; }
+  body.playing #eq span{ opacity:1; }
+  @keyframes eqbar{ 0%,100%{height:3px;} 50%{height:18px;} }
+
+  #progress-track{ width:64px; height:3px; border-radius:2px; background:rgba(255,255,255,.14); overflow:hidden; }
+  #progress-fill{ height:100%; width:0%; background:var(--brass); transition:width .3s linear; }
+
+  #hint{ position:absolute; bottom:8px; left:50%; transform:translateX(-50%); font-size:.66rem; opacity:.4; letter-spacing:1px; z-index:5; font-family:'Share Tech Mono', monospace; }
+
+  @media (max-width:640px){
+    #title-ml{ font-size:1.7rem; }
+    #scene-nav button span.label{ display:none; }
+    #dashboard{ gap:14px; padding:10px 16px; }
+  }
+</style>
+</head>
+<body class="scene-window">
+
+  <div id="stage">
+    <div class="scene-layer scene-window active">
+      <div class="scene-bg"></div>
+      <div class="sun-flare"></div>
+      <div class="ridge"></div>
+      <div class="palm-row">
+        <div class="palm"><i></i><i></i><i></i></div><div class="palm"><i></i><i></i><i></i></div>
+        <div class="palm"><i></i><i></i><i></i></div><div class="palm"><i></i><i></i><i></i></div>
+        <div class="palm"><i></i><i></i><i></i></div><div class="palm"><i></i><i></i><i></i></div>
+        <div class="palm"><i></i><i></i><i></i></div><div class="palm"><i></i><i></i><i></i></div>
+        <div class="palm"><i></i><i></i><i></i></div><div class="palm"><i></i><i></i><i></i></div>
+      </div>
+      <div class="glass-streak"></div>
+      <div class="glass-frame"></div>
+      <div class="glass-mullion"></div>
+      <div class="seat-sil"></div>
+      <div class="particles" data-density="dust"></div>
+    </div>
+
+    <div class="scene-layer scene-stand">
+      <div class="scene-bg"></div>
+      <div class="skyline" id="skyline"></div>
+      <div class="lamp l1"><div class="glow"></div></div>
+      <div class="lamp l2"><div class="glow"></div></div>
+      <div class="fog-band"></div>
+      <div class="ground-reflect"></div>
+      <svg class="bus-art" viewBox="0 0 440 190" preserveAspectRatio="xMidYMax meet">
+        <defs>
+          <linearGradient id="busBody" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#7a2436"/>
+            <stop offset="1" stop-color="#33101a"/>
+          </linearGradient>
+          <linearGradient id="busGlass" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#cfe6e8"/>
+            <stop offset="1" stop-color="#6f9698"/>
+          </linearGradient>
+          <pattern id="windowsPattern" width="42" height="34" patternUnits="userSpaceOnUse">
+            <rect width="34" height="34" rx="4" fill="url(#busGlass)"/>
+          </pattern>
+          <radialGradient id="headlightGlow" cx="0.5" cy="0.5" r="0.5">
+            <stop offset="0" stop-color="#fff2c4" stop-opacity="0.85"/>
+            <stop offset="1" stop-color="#fff2c4" stop-opacity="0"/>
+          </radialGradient>
+        </defs>
+        <ellipse cx="220" cy="182" rx="200" ry="9" fill="rgba(0,0,0,0.5)"/>
+        <ellipse cx="55" cy="176" rx="72" ry="18" fill="url(#headlightGlow)"/>
+        <rect x="20" y="55" width="400" height="92" rx="10" fill="url(#busBody)" stroke="#180508" stroke-width="2"/>
+        <rect x="20" y="50" width="400" height="9" rx="4" fill="#3d1420"/>
+        <rect x="34" y="66" width="360" height="34" fill="url(#windowsPattern)"/>
+        <rect x="4" y="70" width="20" height="46" rx="6" fill="url(#busGlass)"/>
+        <rect x="20" y="112" width="400" height="11" fill="#e3d0a3"/>
+        <rect x="28" y="38" width="150" height="13" rx="2" fill="#050505" stroke="#7a5f2c" stroke-width="1"/>
+        <text x="103" y="47.5" font-family="'Share Tech Mono',monospace" font-size="8" fill="#caa056" text-anchor="middle" letter-spacing="1">THIRUVANANTHAPURAM</text>
+        <circle cx="15" cy="124" r="6" fill="#fff2c4"/>
+        <circle cx="408" cy="124" r="5" fill="#c0392b"/>
+        <rect x="10" y="136" width="410" height="7" rx="3" fill="#221414"/>
+        <rect x="1" y="58" width="4" height="13" fill="#0c0c0c"/>
+        <circle cx="3" cy="56" r="5" fill="#2a2a2a"/>
+        <circle cx="86" cy="146" r="23" fill="#0b0b0b"/><circle cx="86" cy="146" r="9" fill="#3a3a3a"/>
+        <circle cx="332" cy="146" r="23" fill="#0b0b0b"/><circle cx="332" cy="146" r="9" fill="#3a3a3a"/>
+      </svg>
+      <div class="crowd">
+        <i></i><i style="height:30px"></i><i></i><i style="height:22px"></i><i></i><i style="height:28px"></i>
+      </div>
+      <div class="particles" data-density="haze"></div>
+    </div>
+
+    <div class="scene-layer scene-conductor">
+      <div class="scene-bg"></div>
+      <div class="bokeh b1"></div><div class="bokeh b2"></div><div class="bokeh b3"></div>
+      <div class="ticket-roll"></div>
+      <div class="punch"><div class="lever"></div><div class="dial"></div></div>
+      <div class="sleeve"></div>
+      <div class="coins"><i></i><i></i><i></i></div>
+      <div class="particles" data-density="motes"></div>
+    </div>
+
+    <div class="scene-layer scene-night">
+      <div class="scene-bg"></div>
+      <div class="stars" id="star-field"></div>
+      <div class="far-hills"></div>
+      <div class="streak" style="top:74%; animation-duration:1.7s;"></div>
+      <div class="streak" style="top:80%; animation-duration:2.3s; animation-delay:.5s;"></div>
+      <div class="streak" style="top:86%; animation-duration:1.3s; animation-delay:.9s;"></div>
+      <div class="dash-glow"></div>
+      <div class="particles" data-density="dust"></div>
+    </div>
+  </div>
+
+  <div id="vignette"></div>
+  <div id="grain"></div>
+  <div class="letterbox top"></div>
+  <div class="letterbox bottom"></div>
+
+  <nav id="scene-nav">
+    <button data-scene="window" class="active">✦ <span class="label">Highway</span></button>
+    <button data-scene="stand">✦ <span class="label">Junction</span></button>
+    <button data-scene="conductor">✦ <span class="label">Ticket Counter</span></button>
+    <button data-scene="night">✦ <span class="label">Super Fast</span></button>
+  </nav>
+
+  <div id="title-block">
+    <p id="title-ml">ആനവണ്ടി</p>
+    <p id="title-en">A A N A V A N D I</p>
+  </div>
+
+  <button id="ambience-btn">◐ Ambience Off</button>
+
+  <iframe id="spotify-embed" title="player" allow="encrypted-media; autoplay" loading="lazy" tabindex="-1"></iframe>
+
+  <div id="dashboard">
+    <button id="prev-btn" class="ctrl-btn" title="Previous">⏮</button>
+    <button id="play-btn" class="ctrl-btn" title="Play / Pause">▶</button>
+    <button id="next-btn" class="ctrl-btn" title="Next">⏭</button>
+    <div id="progress-track"><div id="progress-fill"></div></div>
+    <div id="eq"><span></span><span></span><span></span><span></span></div>
+  </div>
+
+  <p id="hint">choose a scene above · press play below</p>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ============ CONFIG ============ */
+  var DEFAULT_SPOTIFY_URI = "spotify:playlist:37i9dQZF1DXc7ZYlHsGPhK";
+  var params = new URLSearchParams(window.location.search);
+  var overridePlaylist = params.get("playlist");
+  var SPOTIFY_URI = overridePlaylist ? ("spotify:playlist:" + overridePlaylist) : DEFAULT_SPOTIFY_URI;
+
+  var body = document.body;
+
+  /* ============ SKYLINE (generated) ============ */
+  var skyline = document.getElementById('skyline');
+  for (var s=0; s<22; s++){
+    var b = document.createElement('i');
+    var w = 18 + Math.random()*26;
+    var h = 20 + Math.random()*75;
+    b.style.width = w + 'px'; b.style.height = h + '%';
+    skyline.appendChild(b);
+  }
+
+  /* ============ STARS ============ */
+  var starField = document.getElementById('star-field');
+  for (var i=0;i<70;i++){
+    var st = document.createElement('i');
+    st.style.left = (Math.random()*100)+'%';
+    st.style.top = (Math.random()*100)+'%';
+    st.style.animationDelay = (Math.random()*3.4)+'s';
+    starField.appendChild(st);
+  }
+
+  /* ============ PARTICLES ============ */
+  document.querySelectorAll('.particles').forEach(function(container){
+    var count = 16;
+    for (var p=0; p<count; p++){
+      var sp = document.createElement('span');
+      sp.style.left = (Math.random()*100)+'%';
+      var dur = 6 + Math.random()*10;
+      sp.style.animationDuration = dur+'s';
+      sp.style.animationDelay = (Math.random()*dur)+'s';
+      sp.style.opacity = (0.2 + Math.random()*0.4);
+      container.appendChild(sp);
+    }
+  });
+
+  /* ============ SCENE SWITCHING ============ */
+  var navButtons = document.querySelectorAll('#scene-nav button');
+  var sceneLayers = document.querySelectorAll('.scene-layer');
+  var sceneClasses = ['scene-window','scene-stand','scene-conductor','scene-night'];
+
+  function showScene(name){
+    sceneClasses.forEach(function(c){ body.classList.remove(c); });
+    body.classList.add('scene-' + name);
+    navButtons.forEach(function(b){ b.classList.toggle('active', b.dataset.scene === name); });
+    sceneLayers.forEach(function(l){ l.classList.toggle('active', l.classList.contains('scene-' + name)); });
+    setAmbience(name);
+  }
+  navButtons.forEach(function(btn){
+    btn.addEventListener('click', function(){ showScene(btn.dataset.scene); });
+  });
+
+  document.querySelector('.scene-layer.scene-conductor').addEventListener('click', function(){
+    body.classList.remove('punching'); void body.offsetWidth; body.classList.add('punching');
+    playPunchSound();
+    setTimeout(function(){ body.classList.remove('punching'); }, 500);
+  });
+
+  /* ============ SPOTIFY PLAYBACK (official iFrame API, rendered off-screen, zero visible Spotify UI) ============ */
+  var spotifyController = null;
+  var isPlaying = false;
+
+  window.onSpotifyIframeApiReady = function(IFrameAPI){
+    var element = document.getElementById('spotify-embed');
+    var options = { uri: SPOTIFY_URI, width: '1', height: '1' };
+    IFrameAPI.createController(element, options, function(EmbedController){
+      spotifyController = EmbedController;
+      EmbedController.addListener('playback_update', function(e){
+        var paused = !!(e && e.data && e.data.isPaused);
+        setPlayingState(!paused);
+        if (e && e.data && e.data.duration){
+          var pct = Math.min(100, (e.data.position / e.data.duration) * 100);
+          document.getElementById('progress-fill').style.width = pct + '%';
+        }
+      });
+    });
+  };
+  (function loadSpotifyApi(){
+    var tag = document.createElement('script');
+    tag.src = "https://open.spotify.com/embed/iframe-api/v1";
+    tag.async = true;
+    document.head.appendChild(tag);
+  })();
+
+  function setPlayingState(playing){
+    isPlaying = playing;
+    body.classList.toggle('playing', playing);
+    document.getElementById('play-btn').textContent = playing ? '⏸' : '▶';
+  }
+
+  document.getElementById('play-btn').addEventListener('click', function(){
+    if (!spotifyController) return;
+    if (isPlaying){ spotifyController.pause(); } else { spotifyController.resume ? spotifyController.resume() : spotifyController.play(); }
+  });
+  document.getElementById('next-btn').addEventListener('click', function(){ if (spotifyController) spotifyController.nextTrack(); });
+  document.getElementById('prev-btn').addEventListener('click', function(){ if (spotifyController) spotifyController.previousTrack(); });
+
+  /* ============ AMBIENT SOUND (Web Audio API, synthesized, no external files) ============ */
+  var audioCtx = null;
+  var ambienceOn = false;
+  var activeNodes = [];
+
+  function ensureCtx(){ if (!audioCtx){ audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } return audioCtx; }
+  function stopAmbience(){ activeNodes.forEach(function(n){ try{ n.stop(); }catch(e){} try{ n.disconnect(); }catch(e){} }); activeNodes = []; }
+
+  function engineHum(ctx, dest, freq){
+    var osc = ctx.createOscillator(); osc.type='sawtooth'; osc.frequency.value = freq || 55;
+    var gain = ctx.createGain(); gain.gain.value = 0.045;
+    var lfo = ctx.createOscillator(); lfo.frequency.value = 4; var lfoGain = ctx.createGain(); lfoGain.gain.value = 5;
+    lfo.connect(lfoGain); lfoGain.connect(osc.frequency);
+    osc.connect(gain); gain.connect(dest);
+    osc.start(); lfo.start();
+    activeNodes.push(osc, lfo);
+  }
+  function noiseBed(ctx, dest, vol){
+    var bufferSize = 2 * ctx.sampleRate;
+    var buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    var data = buffer.getChannelData(0);
+    for (var i=0;i<bufferSize;i++){ data[i] = (Math.random()*2-1) * 0.5; }
+    var noise = ctx.createBufferSource(); noise.buffer = buffer; noise.loop = true;
+    var filter = ctx.createBiquadFilter(); filter.type='bandpass'; filter.frequency.value = 900;
+    var gain = ctx.createGain(); gain.gain.value = vol || 0.025;
+    noise.connect(filter); filter.connect(gain); gain.connect(dest);
+    noise.start();
+    activeNodes.push(noise);
+  }
+  function hornBeep(ctx, dest){
+    var osc = ctx.createOscillator(); osc.type='square'; osc.frequency.value = 340;
+    var gain = ctx.createGain(); gain.gain.value = 0.0001;
+    osc.connect(gain); gain.connect(dest);
+    var t = ctx.currentTime;
+    gain.gain.exponentialRampToValueAtTime(0.05, t+0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t+0.35);
+    osc.start(t); osc.stop(t+0.4);
+  }
+  function playPunchSound(){
+    if (!ambienceOn || !audioCtx) return;
+    var dest = audioCtx.destination;
+    var osc = audioCtx.createOscillator(); osc.type='square'; osc.frequency.value = 1200;
+    var gain = audioCtx.createGain(); gain.gain.value = 0.0001;
+    osc.connect(gain); gain.connect(dest);
+    var t = audioCtx.currentTime;
+    gain.gain.exponentialRampToValueAtTime(0.07, t+0.005);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t+0.12);
+    osc.start(t); osc.stop(t+0.15);
+  }
+
+  function setAmbience(scene){
+    if (!ambienceOn || !audioCtx) return;
+    stopAmbience();
+    var dest = audioCtx.destination;
+    if (scene === 'window'){ engineHum(audioCtx, dest, 55); noiseBed(audioCtx, dest, 0.012); }
+    else if (scene === 'stand'){ noiseBed(audioCtx, dest, 0.045); if (Math.random()>0.5) setTimeout(function(){ hornBeep(audioCtx, dest); }, 1200); }
+    else if (scene === 'conductor'){ noiseBed(audioCtx, dest, 0.008); }
+    else if (scene === 'night'){ engineHum(audioCtx, dest, 40); }
+  }
+
+  var ambienceBtn = document.getElementById('ambience-btn');
+  ambienceBtn.addEventListener('click', function(){
+    ambienceOn = !ambienceOn;
+    ambienceBtn.classList.toggle('on', ambienceOn);
+    ambienceBtn.textContent = ambienceOn ? '◉ Ambience On' : '◐ Ambience Off';
+    if (ambienceOn){
+      ensureCtx();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      var current = sceneClasses.filter(function(c){ return body.classList.contains(c); })[0];
+      setAmbience(current ? current.replace('scene-','') : 'window');
+    } else { stopAmbience(); }
+  });
+
+  /* ============ FILM GRAIN (canvas-generated noise tile, no external image) ============ */
+  (function grain(){
+    var c = document.createElement('canvas'); c.width = 120; c.height = 120;
+    var ctx = c.getContext('2d');
+    var img = ctx.createImageData(120,120);
+    for (var i=0;i<img.data.length;i+=4){
+      var v = Math.random()*255;
+      img.data[i]=v; img.data[i+1]=v; img.data[i+2]=v; img.data[i+3]=30;
+    }
+    ctx.putImageData(img,0,0);
+    document.getElementById('grain').style.backgroundImage = 'url(' + c.toDataURL() + ')';
+  })();
+
+})();
+</script>
+</body>
+</html>
