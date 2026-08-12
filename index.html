@@ -386,8 +386,8 @@
 
   function setNowPlayingMessage(title, artist){
     document.getElementById('np-index').textContent = '';
-    document.getElementById('np-title').textContent = title;
-    document.getElementById('np-artist').textContent = artist || '';
+    document.getElementById('np-title').textContent = artist;
+    document.getElementById('np-artist').textContent = title || '';
   }
 
   // "Artist - Title.mp3" (or "01 - Artist - Title.mp3") splits nicely into
